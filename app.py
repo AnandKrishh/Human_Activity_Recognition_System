@@ -39,7 +39,7 @@ st.markdown("""
 @st.cache_resource
 def load_model():
     try:
-        model = joblib.load('har_pipeline.joblib')
+        model = joblib.load('logistic_regression_model.joblib')
         return model
     except Exception as e:
         st.error(f"Failed to load model: {str(e)}")
