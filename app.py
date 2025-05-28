@@ -49,7 +49,7 @@ def load_model():
 @st.cache_resource
 def load_label_encoder():
     try:
-        encoder = joblib.load('label_encoder.joblib')
+        encoder = joblib.load('./label_encoder.joblib')
         return encoder
     except Exception as e:
         st.error(f"Failed to load label encoder: {str(e)}")
