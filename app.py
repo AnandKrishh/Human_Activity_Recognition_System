@@ -105,50 +105,40 @@ st.title("Human Activity Recognition System")
 col1, col2 = st.columns([2, 1])
 
 with col1:
-    # Camera controls
-    camera_col1, camera_col2 = st.columns(2)
-    with camera_col1:
-        take_picture = st.button("Take Picture", use_container_width=True)
-    # Video feed placeholder
+    # Camera input widget for browser-based photo capture
+    camera_image = st.camera_input("Take a picture")
     image_placeholder = st.empty()
 
-    if take_picture:
+    if camera_image is not None:
         try:
-            cap = cv2.VideoCapture(0)
+            # Convert the uploaded image to a numpy array
+            file_bytes = np.asarray(bytearray(camera_image.getvalue()), dtype=np.uint8)
+            frame = cv2.imdecode(file_bytes, 1)
             model = load_model()
             encoder = load_label_encoder()
-            if not cap.isOpened():
-                st.error("Unable to access webcam. Please check permissions.")
-            else:
-                ret, frame = cap.read()
-                if not ret:
-                    st.error("Failed to capture image from webcam.")
-                else:
-                    # Extract features and make prediction
-                    if model is not None and encoder is not None:
-                        features = extract_features(frame)
-                        prediction = model.predict(features)
-                        confidence = model.predict_proba(features).max()
-                        activity_name = encoder.inverse_transform([prediction[0]])[0]
-                        # Draw prediction on frame
-                        cv2.putText(
-                            frame,
-                            f"{activity_name} ({confidence:.2f})",
-                            (10, 30),
-                            cv2.FONT_HERSHEY_SIMPLEX,
-                            1,
-                            (0, 255, 0),
-                            2
-                        )
-                        # Show the frame
-                        image_placeholder.image(frame, channels="BGR", use_column_width=True)
-                        # Add to predictions history
-                        st.session_state.predictions.appendleft({
-                            'timestamp': datetime.now().strftime('%H:%M:%S'),
-                            'activity': activity_name,
-                            'confidence': f"{confidence:.2f}"
-                        })
-                cap.release()
+            if model is not None and encoder is not None:
+                features = extract_features(frame)
+                prediction = model.predict(features)
+                confidence = model.predict_proba(features).max()
+                activity_name = encoder.inverse_transform([prediction[0]])[0]
+                # Draw prediction on frame
+                cv2.putText(
+                    frame,
+                    f"{activity_name} ({confidence:.2f})",
+                    (10, 30),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    1,
+                    (0, 255, 0),
+                    2
+                )
+                # Show the frame
+                image_placeholder.image(frame, channels="BGR", use_column_width=True)
+                # Add to predictions history
+                st.session_state.predictions.appendleft({
+                    'timestamp': datetime.now().strftime('%H:%M:%S'),
+                    'activity': activity_name,
+                    'confidence': f"{confidence:.2f}"
+                })
         except Exception as e:
             st.error(f"Error: {str(e)}")
 
