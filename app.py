@@ -39,7 +39,7 @@ st.markdown("""
 @st.cache_resource
 def load_model():
     try:
-        model = joblib.load('logistic_regression_model.joblib')
+        model = joblib.load('har_pipeline.joblib')
         return model
     except Exception as e:
         st.error(f"Failed to load model: {str(e)}")
@@ -50,13 +50,11 @@ def extract_features(frame):
     # Convert to grayscale
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     
-    # Resize to a fixed size
-    resized = cv2.resize(gray, (64, 64))
+    # Resize to a fixed size (smaller dimension to get 200 features)
+    resized = cv2.resize(gray, (20, 10))  # 20x10 = 200 features
     
-    # Extract HOG features
+    # Flatten and normalize features
     features = resized.flatten()
-    
-    # Normalize features
     features = features / 255.0
     
     return features.reshape(1, -1)
