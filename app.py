@@ -55,16 +55,6 @@ def load_label_encoder():
         st.error(f"Failed to load label encoder: {str(e)}")
         return None
 
-# Load the feature selector
-@st.cache_resource
-def load_feature_selector():
-    try:
-        selector = joblib.load('feature_selector.joblib')
-        return selector
-    except Exception as e:
-        st.error(f"Failed to load feature selector: {str(e)}")
-        return None
-
 # Feature extraction function
 def extract_features(frame):
     # Convert to grayscale
@@ -126,12 +116,11 @@ with col1:
             frame = cv2.imdecode(file_bytes, 1)
             model = load_model()
             encoder = load_label_encoder()
-            selector = load_feature_selector()
-            if model is not None and encoder is not None and selector is not None:
+            if model is not None and encoder is not None:
                 features = extract_features(frame)
-                features_selected = selector.transform(features)
-                prediction = model.predict(features_selected)
-                confidence = model.predict_proba(features_selected).max()
+                # No feature selector, use raw features
+                prediction = model.predict(features)
+                confidence = model.predict_proba(features).max()
                 activity_name = encoder.inverse_transform([prediction[0]])[0]
                 # Draw prediction on frame
                 cv2.putText(
