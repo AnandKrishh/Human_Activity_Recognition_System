@@ -137,7 +137,7 @@ with col1:
                 )
             
             # Display annotated image
-            video_placeholder.image(frame, channels="BGR", use_column_width=True)
+            video_placeholder.image(frame, channels="BGR", use_container_width=True)
             
             # Update prediction rate
             pred_rate = len(st.session_state.predictions) / elapsed_time
