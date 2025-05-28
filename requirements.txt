@@ -1,7 +1,7 @@
-numpy==1.24.3
-pandas==2.0.3
-streamlit==1.31.1
-scikit-learn==1.3.0
-opencv-python-headless==4.8.0.74
-joblib==1.3.1
-plotly==5.18.0
+numpy
+pandas
+streamlit
+scikit-learn
+opencv-python-headless
+joblib
+plotly
