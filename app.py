@@ -6,7 +6,7 @@ import plotly.express as px
 from datetime import datetime
 import joblib
 from collections import deque
-from sklearn.metrics import accuracy_score, precision_score, recall_score
+from sklearn.metrics import accuracy_score, precision_score, recall_score, confusion_matrix
 import time
 
 # Page config
@@ -39,7 +39,7 @@ st.markdown("""
 @st.cache_resource
 def load_model():
     try:
-        model = joblib.load('logistic_regression_model.joblib')
+        model = joblib.load('har_pipeline.joblib')
         return model
     except Exception as e:
         st.error(f"Failed to load model: {str(e)}")
@@ -98,72 +98,52 @@ with col1:
     # Video feed placeholder
     video_placeholder = st.empty()
     
-    # Camera controls
-    camera_col1, camera_col2 = st.columns(2)
-    with camera_col1:
-        start_camera = st.button("Start Camera", use_container_width=True)
-    with camera_col2:
-        stop_camera = st.button("Stop Camera", use_container_width=True)
+    # Camera input
+    img_data = st.camera_input("Take a picture")
 
-    if start_camera:
-        try:
-            cap = cv2.VideoCapture(0)
-            model = load_model()
+    if img_data is not None:
+        # Convert to numpy array
+        file_bytes = np.asarray(bytearray(img_data.read()), dtype=np.uint8)
+        frame = cv2.imdecode(file_bytes, 1)
+        
+        # Update FPS calculation
+        st.session_state.frame_count += 1
+        elapsed_time = time.time() - st.session_state.start_time
+        fps = st.session_state.frame_count / elapsed_time
+        fps_display.metric("FPS", f"{fps:.2f}")
+        
+        # Extract features and make prediction
+        model = load_model()
+        if model is not None:
+            features = extract_features(frame)
+            prediction = model.predict(features)
+            confidence = model.predict_proba(features).max()
             
-            if not cap.isOpened():
-                st.error("Unable to access webcam. Please check permissions.")
-            else:
-                while cap.isOpened():
-                    ret, frame = cap.read()
-                    if not ret:
-                        break
-                    
-                    # Update FPS calculation
-                    st.session_state.frame_count += 1
-                    elapsed_time = time.time() - st.session_state.start_time
-                    fps = st.session_state.frame_count / elapsed_time
-                    fps_display.metric("FPS", f"{fps:.2f}")
-                    
-                    # Extract features and make prediction
-                    if model is not None:
-                        features = extract_features(frame)
-                        prediction = model.predict(features)
-                        confidence = model.predict_proba(features).max()
-                        
-                        if confidence >= confidence_threshold:
-                            # Add to predictions history
-                            st.session_state.predictions.appendleft({
-                                'timestamp': datetime.now().strftime('%H:%M:%S'),
-                                'activity': prediction[0],
-                                'confidence': f"{confidence:.2f}"
-                            })
-                            
-                            # Draw prediction on frame
-                            cv2.putText(
-                                frame,
-                                f"{prediction[0]} ({confidence:.2f})",
-                                (10, 30),
-                                cv2.FONT_HERSHEY_SIMPLEX,
-                                1,
-                                (0, 255, 0),
-                                2
-                            )
-                    
-                    # Display the frame
-                    video_placeholder.image(frame, channels="BGR", use_column_width=True)
-                    
-                    # Update prediction rate
-                    pred_rate = len(st.session_state.predictions) / elapsed_time
-                    prediction_rate.metric("Predictions/sec", f"{pred_rate:.2f}")
-                    
-                    # Check for stop button
-                    if stop_camera:
-                        break
-                        
-                cap.release()
+            if confidence >= confidence_threshold:
+                # Add to predictions history
+                st.session_state.predictions.appendleft({
+                    'timestamp': datetime.now().strftime('%H:%M:%S'),
+                    'activity': prediction[0],
+                    'confidence': f"{confidence:.2f}"
+                })
                 
-        except Exception as e:
-            st.error(f"Error: {str(e)}")
+                # Draw prediction on frame
+                cv2.putText(
+                    frame,
+                    f"{prediction[0]} ({confidence:.2f})",
+                    (10, 30),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    1,
+                    (0, 255, 0),
+                    2
+                )
+            
+            # Display annotated image
+            video_placeholder.image(frame, channels="BGR", use_column_width=True)
+            
+            # Update prediction rate
+            pred_rate = len(st.session_state.predictions) / elapsed_time
+            prediction_rate.metric("Predictions/sec", f"{pred_rate:.2f}")
 
 with col2:
     # Recent predictions table
