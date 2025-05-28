@@ -49,7 +49,7 @@ def load_model():
 @st.cache_resource
 def load_label_encoder():
     try:
-        encoder = joblib.load('./label_encoder.joblib')
+        encoder = joblib.load('label_encoder.joblib')
         return encoder
     except Exception as e:
         st.error(f"Failed to load label encoder: {str(e)}")
@@ -105,17 +105,14 @@ st.title("Human Activity Recognition System")
 col1, col2 = st.columns([2, 1])
 
 with col1:
-    # Video feed placeholder
-    video_placeholder = st.empty()
-    
     # Camera controls
     camera_col1, camera_col2 = st.columns(2)
     with camera_col1:
-        start_camera = st.button("Start Camera", use_container_width=True)
-    with camera_col2:
-        stop_camera = st.button("Stop Camera", use_container_width=True)
+        take_picture = st.button("Take Picture", use_container_width=True)
+    # Video feed placeholder
+    image_placeholder = st.empty()
 
-    if start_camera:
+    if take_picture:
         try:
             cap = cv2.VideoCapture(0)
             model = load_model()
@@ -123,56 +120,35 @@ with col1:
             if not cap.isOpened():
                 st.error("Unable to access webcam. Please check permissions.")
             else:
-                while cap.isOpened():
-                    ret, frame = cap.read()
-                    if not ret:
-                        break
-                    
-                    # Update FPS calculation
-                    st.session_state.frame_count += 1
-                    elapsed_time = time.time() - st.session_state.start_time
-                    fps = st.session_state.frame_count / elapsed_time
-                    fps_display.metric("FPS", f"{fps:.2f}")
-                    
+                ret, frame = cap.read()
+                if not ret:
+                    st.error("Failed to capture image from webcam.")
+                else:
                     # Extract features and make prediction
                     if model is not None and encoder is not None:
                         features = extract_features(frame)
                         prediction = model.predict(features)
                         confidence = model.predict_proba(features).max()
                         activity_name = encoder.inverse_transform([prediction[0]])[0]
-                        
-                        if confidence >= confidence_threshold:
-                            # Add to predictions history
-                            st.session_state.predictions.appendleft({
-                                'timestamp': datetime.now().strftime('%H:%M:%S'),
-                                'activity': activity_name,
-                                'confidence': f"{confidence:.2f}"
-                            })
-                            
-                            # Draw prediction on frame
-                            cv2.putText(
-                                frame,
-                                f"{activity_name} ({confidence:.2f})",
-                                (10, 30),
-                                cv2.FONT_HERSHEY_SIMPLEX,
-                                1,
-                                (0, 255, 0),
-                                2
-                            )
-                    
-                    # Display the frame
-                    video_placeholder.image(frame, channels="BGR", use_column_width=True)
-                    
-                    # Update prediction rate
-                    pred_rate = len(st.session_state.predictions) / elapsed_time
-                    prediction_rate.metric("Predictions/sec", f"{pred_rate:.2f}")
-                    
-                    # Check for stop button
-                    if stop_camera:
-                        break
-                        
+                        # Draw prediction on frame
+                        cv2.putText(
+                            frame,
+                            f"{activity_name} ({confidence:.2f})",
+                            (10, 30),
+                            cv2.FONT_HERSHEY_SIMPLEX,
+                            1,
+                            (0, 255, 0),
+                            2
+                        )
+                        # Show the frame
+                        image_placeholder.image(frame, channels="BGR", use_column_width=True)
+                        # Add to predictions history
+                        st.session_state.predictions.appendleft({
+                            'timestamp': datetime.now().strftime('%H:%M:%S'),
+                            'activity': activity_name,
+                            'confidence': f"{confidence:.2f}"
+                        })
                 cap.release()
-                
         except Exception as e:
             st.error(f"Error: {str(e)}")
 
